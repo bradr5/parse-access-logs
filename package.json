@@ -1,0 +1,22 @@
+{
+  "name": "access-logs",
+  "version": "1.0.0",
+  "description": "extract geo and device info from access logs, combine with existing info, and export to csv file",
+  "main": "parse.js",
+  "scripts": {
+    "test": "jest",
+    "parse": "node parse.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sematext/logagent": "^3.0.31",
+    "cli-progress": "^3.7.0",
+    "count-lines-in-file": "^1.1.0",
+    "geoip-lite": "^1.4.1",
+    "jest": "^25.3.0",
+    "json2csv": "^5.0.0",
+    "line-by-line": "^0.1.6",
+    "ua-parser-js": "^0.7.21"
+  }
+}

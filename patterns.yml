@@ -1,0 +1,182 @@
+# 
+# PARSER DEFINITIONS FILE IN YML FORMAT
+#
+# Please use 'ts' as feild name for dates and time
+# RegexTools: https://regex101.com/#javascript
+# Date format changes in date-fns: 
+# DEPRECATED date formats: https://date-fns.org/v2.0.0-alpha.6/docs/parse
+# NEW date formats: https://date-fns.org/v2.9.0/docs/parse
+#   DD -> dd
+#   YYYY -> yyyy
+#   ZZ -> X 
+
+
+# Sensitive data can be replaced with a hashcode (sha1)
+# it applies to fields matching the field names by a regular expression
+# Note: this function is not optimized (yet) and might cause 10-15% performance hit
+#autohash: !!js/regexp /user|client_ip|password|email|credit_card_number|payment_info/i
+# set the hash function (default sha256), sha256,sha512
+#hashFunction: sha512
+
+debug: false
+# set originalLine to false when auothash fields
+# the original line might include sensitive data!
+originalLine: false
+# default seperator for multiline logs, 
+# which don't have a blockStart property
+# The default /^\S{2,}/ would match typical stack traces
+# All lines that start with a whitespace  or contain only one char 
+# would be attached to previous lines
+multiline:
+  defaultSeparator: ^\S{2,}
+
+# post process all JSON input
+json:
+  enabled: true 
+#  autohashFields:
+#    _HOSTNAME: true
+  debug: false
+#  removeFields:
+#    - stacktrace
+#    - msg
+#    - level
+#    - time
+#  mapFields: 
+#    msg: message
+#    level: severity
+#    time: '@timestamp'
+#  transform: !!js/function >
+#   function (sourceName, parsedObject, config) {
+#    // map fields
+#    Object.keys(config.mapFields).forEach(function (f) {
+#      if (parsedObject[f] !== undefined) {
+#        parsedObject[config.mapFields[f]] = parsedObject[f] 
+#        if (config.debug) {
+#         console.log('map ' + f + ' to ' + config.mapFields[f] + ': ' + parsedObject[config.mapFields[f]])
+#       }
+#      }
+#    })
+#    // remove fields
+#    for (var i=0; i<config.removeFields.length; i++) {
+#       if (config.debug) {
+#         console.log('delete ' + config.removeFields[i])
+#       }
+#       delete parsedObject[config.removeFields[i]]
+#    } 
+#   }
+
+# The global transform function is called for each parsed line.
+# A good place to do add global fields, custom date processing, or special parsers.
+#globalTransform: !!js/function >
+#  function (source, parsedObject) {
+#    // this function is called after parsing
+#    // regardless of the logging source 
+#    // for pattern specific functions use transform in pattern definitions
+#  }
+
+# IMPORTANT:
+# PATTERNS ARE EVALUATED SEQUENTIALLY FOR EACH LOG EVENT. PUT MORE COMPLEX AND MORE SPECIFIC PATTERNS FIRST.
+# As soon as a pattern matches a log event the rest of the patterns are skipped.
+#
+# To test your pattern: cat myTest.log | logagent -n <pattern name here> -yml -f mypatterns.yml
+# A pattern name are things like 'kubernetes hyperkube' or 'Elasticsearch' or 'Apache Solr' below.
+
+patterns:
+ - #  Web Logs
+  sourceName: !!js/regexp /httpd|access_log|apache2|nginx|sematext\/frontend-app/
+  match: 
+    - type: access_log_combined
+      regex: !!js/regexp ^([0-9a-f.:]+)\s(-|\S+)\s(-|\S+)\s\[(.*)\]\s\"(\w+)\s(\S+)\s{0,1}(.*)\" ([0-9|\-]+) ([0-9|\-]+) \"([^\"]+)\" \"([^\"]+)\"
+      fields: 
+        - client_ip:string
+        - remote_id:string
+        - user:string
+        - ts
+        - method:string
+        - path:string
+        - protocol:string
+        - status_code:number
+        - size:number
+        - referer:string
+        - user_agent:string
+      dateFormat: dd/MMM/yyyy:HH:mm:ss X
+      transform: !!js/function >
+        function transformMessage (p) {
+          p.message = p.method + ' ' + p.path
+          if(p.status_code === '-') {
+            p.status_code = 0
+          }
+          if(p.size === '-') {
+            p.size = 0
+          }
+        } 
+    # nginx proxy jwilder/nginx-proxy
+    - regex: !!js/regexp /^(\S+)\s+(-|.+?)\s+(-|.+?)\s+\[(.*)\]\s\"(\S+)\s(\S+)\s(\S+)\"\s(\d+)\s(\d+|\"-\"|-)\s+"{0,1}(.+?)"{0,1}\s+"{0,1}([\S|\s]+)"{0,1}/i
+      type: access_common
+      fields: 
+        - proxy_service:string
+        - virtual_host:string
+        - client_ip:string
+        - remote_id:string
+        - user:String
+        - ts
+        - method:string
+        - path:string
+        - http_version:string
+        - status_code:number
+        - size:number
+        - url:string
+        - user_agent:string
+      dateFormat: dd/MMM/yyyy:HH:mm:ss X
+    - regex: !!js/regexp ^(\S+)\s+(-|.+?)\s+(-|.+?)\s+\[(.*)\]\s\"(\S+)\s(\S+)\s(\S+)\"\s(\d+)\s(\d+|\"-\"|-)
+      type: access_common
+      fields: 
+        - client_ip:string
+        - remote_id:string
+        - user:string
+        - ts
+        - method:string
+        - path:string
+        - http_version:string
+        - status_code:number
+        - size:number
+      dateFormat: dd/MMM/yyyy:HH:mm:ss X
+    - type: nginx_error_log 
+      regex: !!js/regexp /^(\d{4}\/\d{2}\/\d{2}\s[\d|\:]+)\s\[(.+?)]\s(\d+)#(\d+)\:\s(.*)/
+      fields: [ts,level,pid,tid,message]
+      dateformat: yyyy/MM/dd HH:mm:ss
+
+    - type: apache_error_log
+      regex: !!js/regexp /^\[(\w{3} \w{3} \d{2} [\d|\:]+\s\d+)\] \[(.+?)\] \[client ([\d|\.]+)\] (.+)/
+      fields: [ts,level,client_ip,message]
+      dateformat: ddd MMM dd hh:mm:ss.SSS yyyy
+
+    # Apache MPM events
+    - regex: !!js/regexp /^\[(.+?)\]\s+\[(.+?)\]\s+\[(.+?)\]\s+(.+)/
+      fields: [ts,event_type,processInfo,message]
+      type: apache_mpm
+      dateformat: ddd MMM dd hh:mm:ss.SSS yyyy
+
+dateFormats: [
+    'iso',
+    'dd/MMM/yyyy:HH:mm:ss X', #apache
+    'MMM D HH:mm:ss',
+    'MMM dd HH:mm:ss',
+    'dd MMM HH:mm:ss.S',
+    'dd MMM HH:mm:ss',
+    'ddD MMM dd HH:mm:ss',
+    'yyyy-MM-dd',
+    'yyyy-MM-dd HH:mm',
+    'yyyy-MM-dd HHmm',
+    'yyyyMMdd HH:mm',
+    'yyyyMMdd HHmm',
+    'yyyyMMdd',
+    'yyyy-MM-dd HH:mm:ss',
+    'yyyy-MM-dd HHmmss',
+    'yyyy-MM-dd HH:mmX',
+    'yyyy-MM-dd HHmmX',
+    'yyyy-MM-dd HH:mm:ssX',
+    'yyyy-MM-dd HHmmssX',
+    'yyyyMMdd HH:mmX',
+    'yyyyMMdd HHmmX',
+]

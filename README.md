@@ -30,7 +30,6 @@ Node.js command line app that parses out access logs from various formats and ou
 
 * Running with docker
 
-  *warning* - I had issues with getting the container to remain open. I wanted to make the containers only job to run the parse job however after doing so the container will stop. This makes copying files over and pulling them out tricky. I definitely have some research to do.
   * Build the image
 
     $ `docker build -t image-name .`
@@ -38,6 +37,28 @@ Node.js command line app that parses out access logs from various formats and ou
   * Run the container - without copying over files you must use example logs copied over during the build
 
     $ `docker run -it image-name example-logs/gobankingrates.com.access.log`
+
+  * Or bash into the container using
+
+    $ `docker run --entrypoint "/bin/sh" -it image-name`
+
+  * Running in detached mode allows you to get the container id and copy files to and from
+
+    $ `docker run --entrypoint "/bin/sh" -it -d image-name`
+
+    $ `docker ps` - lists container id
+
+    * from host to local
+
+      $ `docker cp <containerID>:/app/file.csv /local/logs.csv`
+    
+    * from local to host
+
+      $ `docker cp logs.csv <containerID>:/app/file.csv`
+
+  * Stopping the container
+
+      $ `docker stop <containerID>`
 
 * Running tests
 

@@ -14,5 +14,4 @@ RUN npm install
 # copy all project files
 COPY . ./
 
-# CMD [ "node", "parse.js" ]
-ENTRYPOINT ["node", "parse.js", "tail -f /dev/null"]
+ENTRYPOINT ["node", "parse.js"]

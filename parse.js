@@ -19,7 +19,7 @@ fs.access(targetFilePath, fs.F_OK, (err) => {
   if (err) throw err;
 });
 const outputFilePath = myArgs[1] ? myArgs[1] : './access-log-data.csv';
-
+console.log('testing4');
 const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 process.stdout.isTTY && countLinesInFile(targetFilePath, (error, number) => {
   if (error) {

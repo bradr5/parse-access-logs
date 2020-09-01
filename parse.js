@@ -11,6 +11,7 @@ const cliProgress = require('cli-progress');
 const countLinesInFile = require('count-lines-in-file');
 const path = require('path');
 const testing1
+const testing2;
 const myArgs = process.argv.slice(2);
 if (!myArgs[0]) throw new Error('missing argument');
 

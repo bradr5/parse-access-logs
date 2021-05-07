@@ -17,7 +17,7 @@
     "jest": "^25.3.0",
     "json2csv": "^5.0.0",
     "line-by-line": "^0.1.6",
-    "ua-parser-js": "^0.7.21"
+    "ua-parser-js": "^0.7.24"
   },
   "engines": {
     "node": ">=12.0.0",
